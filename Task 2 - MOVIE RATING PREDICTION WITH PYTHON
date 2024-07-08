@@ -1,0 +1,75 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
+
+# Load the dataset
+file_path = 'path/to/your_dataset.csv'  # Replace with the actual path to your dataset
+data = pd.read_csv(file_path)
+
+# Display the first few rows of the dataset
+print(data.head())
+
+# Drop rows with missing target values
+data = data.dropna(subset=['Rating'])
+
+# Fill missing values for other columns if necessary
+data = data.fillna('Unknown')
+
+# Extract features and target variable
+X = data[['Year', 'Duration', 'Genre', 'Votes', 'Director', 'Actor 1', 'Actor 2', 'Actor 3']]
+y = data['Rating']
+
+# Define the column transformer with OneHotEncoder for categorical features
+preprocessor = ColumnTransformer(
+    transformers=[
+        ('year', StandardScaler(), ['Year']),
+        ('duration', StandardScaler(), ['Duration']),
+        ('votes', StandardScaler(), ['Votes']),
+        ('genre', OneHotEncoder(), ['Genre']),
+        ('director', OneHotEncoder(), ['Director']),
+        ('actor1', OneHotEncoder(), ['Actor 1']),
+        ('actor2', OneHotEncoder(), ['Actor 2']),
+        ('actor3', OneHotEncoder(), ['Actor 3'])
+    ])
+
+# Create a pipeline that first transforms the data and then applies the regression model
+pipeline = Pipeline(steps=[
+    ('preprocessor', preprocessor),
+    ('regressor', LinearRegression())
+])
+
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Train the model
+pipeline.fit(X_train, y_train)
+
+# Predict on the test set
+y_pred = pipeline.predict(X_test)
+
+# Calculate the Mean Squared Error
+mse = mean_squared_error(y_test, y_pred)
+print(f'Mean Squared Error: {mse}')
+
+# Example of making a prediction
+new_movie = pd.DataFrame({
+    'Year': [2024],
+    'Duration': [120],
+    'Genre': ['Action'],
+    'Votes': [5000],
+    'Director': ['Christopher Nolan'],
+    'Actor 1': ['Christian Bale'],
+    'Actor 2': ['Michael Caine'],
+    'Actor 3': ['Tom Hardy']
+})
+
+# Transform the new movie data using the same preprocessor
+new_movie_transformed = pipeline.named_steps['preprocessor'].transform(new_movie)
+
+# Predict the rating
+predicted_rating = pipeline.named_steps['regressor'].predict(new_movie_transformed)
+print(f'Predicted Rating: {predicted_rating[0]}')
